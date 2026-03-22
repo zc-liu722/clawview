@@ -8,7 +8,9 @@
     "dev": "corepack pnpm --parallel --filter @clawview/server --filter @clawview/web dev",
     "lint": "biome check .",
     "format": "biome format --write .",
-    "typecheck": "corepack pnpm -r typecheck"
+    "typecheck": "corepack pnpm -r typecheck",
+    "smoke": "./scripts/smoke-check.sh",
+    "share": "./scripts/share-clawview.sh tailnet"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

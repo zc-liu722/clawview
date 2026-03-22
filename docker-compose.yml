@@ -8,13 +8,19 @@ services:
       CLAWVIEW_AGENT_ID: ${CLAWVIEW_AGENT_ID:-agent_local}
       CLAWVIEW_AGENT_NAME: ${CLAWVIEW_AGENT_NAME:-我的 OpenClaw}
       CLAWVIEW_DATA_SOURCE: ${CLAWVIEW_DATA_SOURCE:-openclaw}
+      CLAWVIEW_CLAWD_DIR: /data/clawd
       CLAWVIEW_OPENCLAW_HOME: /data/openclaw
+      CLAWVIEW_OPENCLAW_BIN: ${CLAWVIEW_OPENCLAW_BIN:-openclaw}
+      CLAWVIEW_OPENCLAW_LOG_DIR: ${CLAWVIEW_OPENCLAW_LOG_DIR:-}
+      CLAWVIEW_GATEWAY_RESTART_COMMAND: ${CLAWVIEW_GATEWAY_RESTART_COMMAND:-}
+      CLAWVIEW_GATEWAY_USAGE_COMMAND: ${CLAWVIEW_GATEWAY_USAGE_COMMAND:-}
       CLAWVIEW_PORT: 8787
     expose:
       - "8787"
     restart: unless-stopped
     volumes:
-      - ${CLAWVIEW_OPENCLAW_HOME:-~/.openclaw}:/data/openclaw:ro
+      - ${CLAWVIEW_OPENCLAW_HOME}:/data/openclaw:ro
+      - ${CLAWVIEW_CLAWD_DIR}:/data/clawd
 
   web:
     build:

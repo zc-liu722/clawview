@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
-import { homedir, userInfo } from "node:os";
-import { resolve } from "node:path";
+import { homedir } from "node:os";
+import { join, resolve } from "node:path";
 
 import { z } from "zod";
 
@@ -18,6 +18,9 @@ const configSchema = z.object({
   CLAWVIEW_ALLOWED_ORIGIN: z.string().default("*"),
   CLAWVIEW_DATA_SOURCE: z.enum(["mock", "openclaw"]).default("mock"),
   CLAWVIEW_OPENCLAW_HOME: z.string().default("/data/openclaw"),
+  CLAWVIEW_OPENCLAW_BIN: z.string().default("openclaw"),
+  CLAWVIEW_OPENCLAW_CONFIG_FILE: z.string().default("openclaw.json"),
+  CLAWVIEW_OPENCLAW_LOG_DIR: z.string().default(""),
   CLAWVIEW_CLAWD_DIR: z.string().default("~/clawd"),
   CLAWVIEW_OPENCLAW_SESSIONS_DIR: z.string().default("agents/main/sessions"),
   CLAWVIEW_OPENCLAW_MEMORY_FILE: z.string().default("MEMORY.md"),
@@ -26,9 +29,8 @@ const configSchema = z.object({
   CLAWVIEW_AGENT_NAME: z.string().default("我的 OpenClaw"),
   CLAWVIEW_BASE_URL: z.string().default("http://localhost:5173"),
   CLAWVIEW_STATUS_PATH: z.string().default("/"),
-  CLAWVIEW_GATEWAY_RESTART_COMMAND: z
-    .string()
-    .default("openclaw gateway restart"),
+  CLAWVIEW_GATEWAY_RESTART_COMMAND: z.string().default(""),
+  CLAWVIEW_GATEWAY_USAGE_COMMAND: z.string().default(""),
   CLAWVIEW_GATEWAY_SELF_HEAL: z.coerce.boolean().default(true),
   CLAWVIEW_MODEL_PRICING_OVERRIDES: z.string().default(""),
   CLAWVIEW_USD_TO_CNY_RATE: z.coerce.number().positive().default(7.2),
@@ -49,26 +51,37 @@ function resolveCandidatePath(pathValue: string): string {
     : resolve(process.cwd(), expandedPath);
 }
 
-function getPreferredClawdDir(): string {
-  const username = userInfo().username || homedir().split("/").at(-1) || "";
-  return resolve("/Users", username, "clawd");
+function directoryLooksLikeMemoryHome(dirPath: string): boolean {
+  return (
+    existsSync(join(dirPath, config.CLAWVIEW_OPENCLAW_MEMORY_FILE)) ||
+    existsSync(join(dirPath, config.CLAWVIEW_OPENCLAW_MEMORY_DIR)) ||
+    existsSync(join(dirPath, "workspace"))
+  );
+}
+
+export function resolveOpenClawHome(): string {
+  return resolveCandidatePath(config.CLAWVIEW_OPENCLAW_HOME);
 }
 
 export function resolveClawdDir(): string {
-  const explicitClawdDir = process.env.CLAWVIEW_CLAWD_DIR;
-  const preferredClawdDir = getPreferredClawdDir();
+  const explicitClawdDir = process.env.CLAWVIEW_CLAWD_DIR?.trim();
+  const openClawHome = resolveOpenClawHome();
   const configuredClawdDir = resolveCandidatePath(config.CLAWVIEW_CLAWD_DIR);
-  const openClawHome = resolveCandidatePath(config.CLAWVIEW_OPENCLAW_HOME);
-  const candidates = explicitClawdDir
-    ? [
-        preferredClawdDir,
-        resolveCandidatePath(explicitClawdDir),
-        configuredClawdDir,
-        openClawHome,
-      ]
-    : [preferredClawdDir, configuredClawdDir, openClawHome];
+  const siblingClawdDir = resolve(openClawHome, "..", "clawd");
+  const homeClawdDir = resolve(homedir(), "clawd");
+  const candidates = [
+    explicitClawdDir ? resolveCandidatePath(explicitClawdDir) : null,
+    configuredClawdDir,
+    siblingClawdDir,
+    homeClawdDir,
+    openClawHome,
+  ].filter((candidate): candidate is string => Boolean(candidate));
 
-  return candidates.find((candidate) => existsSync(candidate)) ?? candidates[0];
+  return (
+    candidates.find((candidate) => existsSync(candidate) && directoryLooksLikeMemoryHome(candidate)) ??
+    candidates.find((candidate) => existsSync(candidate)) ??
+    candidates[0]
+  );
 }
 
 export function getStatusPageUrl(): string {

@@ -53,25 +53,28 @@ function deriveSummaryFromContent(content: string): string {
 }
 
 async function triggerGatewayRestart(): Promise<MemoryRestartStatus> {
+  const restartCommand = config.CLAWVIEW_GATEWAY_RESTART_COMMAND.trim();
+
   try {
-    const { stdout, stderr } = await execAsync(
-      config.CLAWVIEW_GATEWAY_RESTART_COMMAND,
-      {
-        timeout: 10_000,
-      },
-    );
+    const { stdout, stderr } = restartCommand
+      ? await execAsync(restartCommand, {
+          timeout: 10_000,
+        })
+      : await execAsync(`${config.CLAWVIEW_OPENCLAW_BIN} gateway restart`, {
+          timeout: 10_000,
+        });
 
     return {
       success: true,
       message: stdout.trim() || stderr.trim() || "网关已重启。",
-      command: config.CLAWVIEW_GATEWAY_RESTART_COMMAND,
+      command: restartCommand || `${config.CLAWVIEW_OPENCLAW_BIN} gateway restart`,
     };
   } catch (error) {
     logger.warn({ error }, "Gateway restart failed after memory update");
     return {
       success: false,
       message: "记忆已保存，但网关重启失败，请稍后手动重启。",
-      command: config.CLAWVIEW_GATEWAY_RESTART_COMMAND,
+      command: restartCommand || `${config.CLAWVIEW_OPENCLAW_BIN} gateway restart`,
     };
   }
 }

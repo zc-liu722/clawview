@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/usr/bin/env bash
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -7,104 +7,121 @@ ENV_FILE="${ROOT_DIR}/.env"
 EXAMPLE_FILE="${ROOT_DIR}/.env.example"
 DEFAULT_OPENCLAW_HOME="${HOME}/.openclaw"
 
+lower() {
+  printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
+}
+
+current_platform() {
+  lower "$(uname -s)"
+}
+
 print_step() {
-  echo ""
-  echo "==> $1"
+  printf '\n==> %s\n' "$1"
+}
+
+resolve_path() {
+  local path_value="${1:-}"
+  if [ -z "${path_value}" ]; then
+    return 0
+  fi
+
+  case "${path_value}" in
+    "~")
+      printf '%s\n' "${HOME}"
+      ;;
+    "~/"*)
+      printf '%s/%s\n' "${HOME}" "${path_value#"~/"}"
+      ;;
+    /*)
+      printf '%s\n' "${path_value}"
+      ;;
+    *)
+      printf '%s/%s\n' "${ROOT_DIR}" "${path_value}"
+      ;;
+  esac
 }
 
 show_dialog() {
   local message="$1"
-  if command -v osascript >/dev/null 2>&1; then
+  if command -v osascript >/dev/null 2>&1 && [ "$(current_platform)" = "darwin" ]; then
     osascript -e "display dialog \"${message}\" buttons {\"好\"} default button \"好\"" >/dev/null 2>&1 || true
   fi
 }
 
 ask_yes_no() {
   local message="$1"
-  if command -v osascript >/dev/null 2>&1; then
+  if command -v osascript >/dev/null 2>&1 && [ "$(current_platform)" = "darwin" ]; then
     local result
     result="$(osascript -e "button returned of (display dialog \"${message}\" buttons {\"取消\", \"继续\"} default button \"继续\")" 2>/dev/null || true)"
     [ "${result}" = "继续" ]
     return
   fi
 
-  printf "%s [Y/n] " "${message}"
+  printf '%s [Y/n] ' "${message}"
   read -r reply
-  [ -z "${reply}" ] || [[ "${reply:l}" = "y" ]]
+  reply="$(lower "${reply:-}")"
+  [ -z "${reply}" ] || [ "${reply}" = "y" ] || [ "${reply}" = "yes" ]
+}
+
+open_url() {
+  local target="$1"
+
+  if command -v open >/dev/null 2>&1; then
+    open "${target}" >/dev/null 2>&1 || true
+    return
+  fi
+
+  if command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "${target}" >/dev/null 2>&1 || true
+    return
+  fi
+
+  if command -v cmd.exe >/dev/null 2>&1; then
+    cmd.exe /c start "${target}" >/dev/null 2>&1 || true
+  fi
 }
 
 pick_openclaw_dir() {
   local current_path="$1"
   if [ -d "${current_path}" ]; then
-    echo "${current_path}"
+    printf '%s\n' "${current_path}"
     return
   fi
 
-  if command -v osascript >/dev/null 2>&1; then
+  if command -v osascript >/dev/null 2>&1 && [ "$(current_platform)" = "darwin" ]; then
     local picked_dir
     picked_dir="$(osascript -e 'tell application "System Events" to POSIX path of (choose folder with prompt "请选择你的 OpenClaw 数据目录")' 2>/dev/null || true)"
     if [ -n "${picked_dir}" ]; then
-      echo "${picked_dir%/}"
+      printf '%s\n' "${picked_dir%/}"
       return
     fi
   fi
 
-  echo "${current_path}"
+  printf '%s\n' "${current_path}"
 }
 
-ensure_homebrew() {
-  if command -v brew >/dev/null 2>&1; then
-    return 0
+detect_clawd_dir() {
+  local explicit="${CLAWVIEW_CLAWD_DIR:-}"
+  local openclaw_home="$1"
+  local sibling_clawd
+
+  if [ -n "${explicit}" ]; then
+    printf '%s\n' "$(resolve_path "${explicit}")"
+    return
   fi
 
-  if ! ask_yes_no "你的电脑还没有安装 Homebrew。ClawView 可以先自动安装 Homebrew，再继续安装 Docker 或 Node。现在开始吗？"; then
-    return 1
+  sibling_clawd="$(cd "${openclaw_home}/.." 2>/dev/null && pwd)/clawd"
+  if [ -d "${sibling_clawd}" ]; then
+    printf '%s\n' "${sibling_clawd}"
+    return
   fi
 
-  print_step "安装 Homebrew"
-  NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-  if [ -x /opt/homebrew/bin/brew ]; then
-    eval "$(/opt/homebrew/bin/brew shellenv)"
-  elif [ -x /usr/local/bin/brew ]; then
-    eval "$(/usr/local/bin/brew shellenv)"
+  if [ -d "${HOME}/clawd" ]; then
+    printf '%s\n' "${HOME}/clawd"
+    return
   fi
 
-  command -v brew >/dev/null 2>&1
-}
-
-wait_for_docker() {
-  local attempts=0
-  until docker info >/dev/null 2>&1; do
-    attempts=$((attempts + 1))
-    if [ "${attempts}" -gt 60 ]; then
-      return 1
-    fi
-    sleep 2
-  done
-
-  return 0
-}
-
-ensure_docker_desktop() {
-  if command -v docker >/dev/null 2>&1; then
-    return 0
-  fi
-
-  if ! ensure_homebrew; then
-    return 1
-  fi
-
-  if ! ask_yes_no "ClawView 建议使用 Docker Desktop 一键启动。现在自动安装 Docker Desktop 吗？安装过程中 macOS 可能会要求你输入密码。"; then
-    return 1
-  fi
-
-  print_step "安装 Docker Desktop"
-  brew install --cask docker
-  open -a Docker
-  show_dialog "Docker Desktop 正在启动。第一次启动时，请在弹窗里完成系统授权，然后等待几秒。"
-
-  wait_for_docker
+  printf '%s\n' "${openclaw_home}"
 }
 
 write_env_file() {
@@ -116,17 +133,25 @@ write_env_file() {
   fi
 
   local tmp_env
+  local clawd_dir
   tmp_env="$(mktemp)"
+  clawd_dir="$(detect_clawd_dir "${openclaw_home}")"
 
-  awk -v openclaw_home="${openclaw_home}" -v web_origin="${web_origin}" '
+  awk -v openclaw_home="${openclaw_home}" -v clawd_dir="${clawd_dir}" -v web_origin="${web_origin}" '
     BEGIN {
       replaced_openclaw = 0;
+      replaced_clawd = 0;
       replaced_source = 0;
       replaced_origin = 0;
     }
     /^CLAWVIEW_OPENCLAW_HOME=/ {
       print "CLAWVIEW_OPENCLAW_HOME=" openclaw_home;
       replaced_openclaw = 1;
+      next;
+    }
+    /^CLAWVIEW_CLAWD_DIR=/ {
+      print "CLAWVIEW_CLAWD_DIR=" clawd_dir;
+      replaced_clawd = 1;
       next;
     }
     /^CLAWVIEW_DATA_SOURCE=/ {
@@ -142,6 +167,7 @@ write_env_file() {
     { print }
     END {
       if (!replaced_openclaw) print "CLAWVIEW_OPENCLAW_HOME=" openclaw_home;
+      if (!replaced_clawd) print "CLAWVIEW_CLAWD_DIR=" clawd_dir;
       if (!replaced_source) print "CLAWVIEW_DATA_SOURCE=openclaw";
       if (!replaced_origin) print "CLAWVIEW_ALLOWED_ORIGIN=" web_origin;
     }
@@ -150,16 +176,59 @@ write_env_file() {
   mv "${tmp_env}" "${ENV_FILE}"
 }
 
+detect_docker_compose() {
+  if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    printf '%s\n' "docker compose"
+    return 0
+  fi
+
+  if command -v docker-compose >/dev/null 2>&1; then
+    printf '%s\n' "docker-compose"
+    return 0
+  fi
+
+  return 1
+}
+
+wait_for_docker() {
+  local attempts=0
+  until docker info >/dev/null 2>&1; do
+    attempts=$((attempts + 1))
+    if [ "${attempts}" -gt 30 ]; then
+      return 1
+    fi
+    sleep 2
+  done
+
+  return 0
+}
+
+try_start_docker_desktop() {
+  if [ "$(current_platform)" != "darwin" ]; then
+    return 1
+  fi
+
+  if command -v open >/dev/null 2>&1; then
+    open -a Docker >/dev/null 2>&1 || return 1
+    show_dialog "Docker Desktop 正在启动。第一次启动时，请在弹窗里完成系统授权，然后等待几秒。"
+    return 0
+  fi
+
+  return 1
+}
+
 launch_docker_mode() {
-  local openclaw_home="$1"
+  local compose_cmd="$1"
+  local openclaw_home="$2"
+
   print_step "使用 Docker 模式启动 ClawView"
   write_env_file "${openclaw_home}" "http://localhost:3000"
   cd "${ROOT_DIR}"
-  docker compose up --build -d
+  ${compose_cmd} up --build -d
   local app_url="http://localhost:3000"
   echo "ClawView 已启动：${app_url}"
   echo "已接入 OpenClaw 目录：${openclaw_home}"
-  command -v open >/dev/null 2>&1 && open "${app_url}"
+  open_url "${app_url}"
 }
 
 launch_local_mode() {
@@ -170,7 +239,9 @@ launch_local_mode() {
 
 main() {
   local openclaw_home
-  openclaw_home="${1:-${CLAWVIEW_OPENCLAW_HOME:-${DEFAULT_OPENCLAW_HOME}}}"
+  local compose_cmd
+
+  openclaw_home="$(resolve_path "${1:-${CLAWVIEW_OPENCLAW_HOME:-${DEFAULT_OPENCLAW_HOME}}}")"
   openclaw_home="$(pick_openclaw_dir "${openclaw_home}")"
 
   if [ ! -d "${openclaw_home}" ]; then
@@ -180,14 +251,14 @@ main() {
     exit 1
   fi
 
-  if ensure_docker_desktop; then
-    if wait_for_docker; then
-      launch_docker_mode "${openclaw_home}"
+  if compose_cmd="$(detect_docker_compose)"; then
+    if wait_for_docker || try_start_docker_desktop && wait_for_docker; then
+      launch_docker_mode "${compose_cmd}" "${openclaw_home}"
       exit 0
     fi
   fi
 
-  show_dialog "Docker 没有准备好，ClawView 将改用本机模式继续启动。"
+  show_dialog "Docker 当前不可用，ClawView 将改用本机模式继续启动。"
   launch_local_mode "${openclaw_home}"
 }
 

@@ -12,8 +12,7 @@ import type {
   TaskStep,
 } from "@clawview/shared";
 
-import { config, resolveClawdDir } from "../lib/config";
-import { expandHomePath } from "../lib/path-utils";
+import { config, resolveClawdDir, resolveOpenClawHome } from "../lib/config";
 import { getGatewayUsageCostSummary } from "../services/gateway-usage.service";
 import { getModelPricing } from "../services/model-pricing.service";
 
@@ -145,8 +144,17 @@ let snapshotCache:
     }
   | undefined;
 
+const SESSION_SCAN_MAX_DEPTH = 4;
+const DIRECTORY_SCAN_EXCLUDES = new Set([
+  ".git",
+  "node_modules",
+  ".pnpm-store",
+  "dist",
+  "build",
+]);
+
 function getOpenClawBasePath(): string {
-  return expandHomePath(config.CLAWVIEW_OPENCLAW_HOME);
+  return resolveOpenClawHome();
 }
 
 function getMemoryBasePath(): string {
@@ -163,6 +171,53 @@ function safeReadDir(dirPath: string): string[] {
   } catch {
     return [];
   }
+}
+
+function discoverMarkdownFiles(
+  dirPath: string,
+  depth = 0,
+  discovered = new Set<string>(),
+): string[] {
+  if (depth > 3) {
+    return [...discovered];
+  }
+
+  for (const entry of safeReadDir(dirPath)) {
+    if (DIRECTORY_SCAN_EXCLUDES.has(entry)) {
+      continue;
+    }
+
+    const entryPath = join(dirPath, entry);
+
+    try {
+      const stats = statSync(entryPath);
+      if (stats.isDirectory()) {
+        const normalizedName = entry.toLowerCase();
+        if (
+          normalizedName === "memory" ||
+          normalizedName === "workspace" ||
+          normalizedName === "memories" ||
+          depth < 1
+        ) {
+          discoverMarkdownFiles(entryPath, depth + 1, discovered);
+        }
+        continue;
+      }
+
+      if (
+        entry.endsWith(".md") &&
+        (entry === config.CLAWVIEW_OPENCLAW_MEMORY_FILE ||
+          depth <= 1 ||
+          dirPath.endsWith(config.CLAWVIEW_OPENCLAW_MEMORY_DIR))
+      ) {
+        discovered.add(entryPath);
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return [...discovered];
 }
 
 function readJsonLines(filePath: string): TranscriptEvent[] {
@@ -696,7 +751,66 @@ function getResolvedSessionsDirs(basePath: string): string[] {
     resolve(basePath, "sessions"),
   ];
 
-  return [...new Set(candidates)].filter((dirPath) => existsSync(dirPath));
+  const discoveredDirs = discoverNestedSessionsDirs(basePath);
+
+  return [...new Set([...candidates, ...discoveredDirs])].filter((dirPath) =>
+    existsSync(dirPath),
+  );
+}
+
+function directoryContainsTranscriptArtifacts(dirPath: string): boolean {
+  return safeReadDir(dirPath).some((entry) => {
+    const entryPath = join(dirPath, entry);
+
+    if (entry === "sessions.json" || entry.endsWith(".jsonl")) {
+      return true;
+    }
+
+    try {
+      if (!statSync(entryPath).isDirectory()) {
+        return false;
+      }
+    } catch {
+      return false;
+    }
+
+    return Boolean(findSessionTranscriptPath(entryPath));
+  });
+}
+
+function discoverNestedSessionsDirs(
+  dirPath: string,
+  depth = 0,
+): string[] {
+  if (depth > SESSION_SCAN_MAX_DEPTH) {
+    return [];
+  }
+
+  const discovered: string[] = [];
+
+  for (const entry of safeReadDir(dirPath)) {
+    if (DIRECTORY_SCAN_EXCLUDES.has(entry)) {
+      continue;
+    }
+
+    const entryPath = join(dirPath, entry);
+
+    try {
+      if (!statSync(entryPath).isDirectory()) {
+        continue;
+      }
+    } catch {
+      continue;
+    }
+
+    if (entry.toLowerCase() === "sessions" && directoryContainsTranscriptArtifacts(entryPath)) {
+      discovered.push(entryPath);
+    }
+
+    discovered.push(...discoverNestedSessionsDirs(entryPath, depth + 1));
+  }
+
+  return discovered;
 }
 
 function readSessionsMetadata(
@@ -951,6 +1065,7 @@ function parseMemoryEntries(basePath: string): MemoryEntry[] {
     ...safeReadDir(resolve(basePath, "workspace"))
       .filter((entry) => entry.endsWith(".md"))
       .map((entry) => resolve(basePath, "workspace", entry)),
+    ...discoverMarkdownFiles(basePath),
   ];
 
   for (const filePath of [...new Set(candidateFiles)]) {

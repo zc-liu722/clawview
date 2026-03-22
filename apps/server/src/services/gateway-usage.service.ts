@@ -1,8 +1,9 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { config } from "../lib/config";
+import { config, resolveOpenClawHome } from "../lib/config";
 
 interface GatewayUsageTotals {
   input?: number;
@@ -65,7 +66,6 @@ export interface GatewayUsageSummary {
 
 const CACHE_TTL_MS = 30_000;
 const FAILURE_CACHE_TTL_MS = 10_000;
-const OPENCLAW_LOG_DIR = "/tmp/openclaw";
 
 let cachedSummary:
   | {
@@ -133,35 +133,51 @@ function parseEmbeddedUsageSummary(line: string): GatewayUsageSummary | null {
   }
 }
 
+function getGatewayLogDirCandidates(): string[] {
+  const configuredDir = config.CLAWVIEW_OPENCLAW_LOG_DIR.trim();
+  const openClawHome = resolveOpenClawHome();
+  return [
+    configuredDir || null,
+    join(tmpdir(), "openclaw"),
+    join(openClawHome, "logs"),
+    join(openClawHome, ".logs"),
+  ].filter((dirPath): dirPath is string => Boolean(dirPath));
+}
+
 function readGatewayUsageSummaryFromLogs(): GatewayUsageSummary | null {
-  if (!existsSync(OPENCLAW_LOG_DIR)) {
-    return null;
-  }
-
-  const logFiles = readdirSync(OPENCLAW_LOG_DIR)
-    .filter((entry) => entry.startsWith("openclaw-") && entry.endsWith(".log"))
-    .map((entry) => join(OPENCLAW_LOG_DIR, entry))
-    .sort(
-      (left, right) => statSync(right).mtimeMs - statSync(left).mtimeMs,
-    );
-
-  for (const logFile of logFiles.slice(0, 3)) {
-    try {
-      const raw = readFileSync(logFile, "utf8");
-      const lines = raw.split("\n").reverse();
-
-      for (const line of lines) {
-        if (!line.includes("\"updatedAt\"") || !line.includes("\"totalTokens\"")) {
-          continue;
-        }
-
-        const summary = parseEmbeddedUsageSummary(line);
-        if (summary) {
-          return summary;
-        }
-      }
-    } catch {
+  for (const logDir of getGatewayLogDirCandidates()) {
+    if (!existsSync(logDir)) {
       continue;
+    }
+
+    const logFiles = readdirSync(logDir)
+      .filter((entry) => entry.startsWith("openclaw-") && entry.endsWith(".log"))
+      .map((entry) => join(logDir, entry))
+      .sort(
+        (left, right) => statSync(right).mtimeMs - statSync(left).mtimeMs,
+      );
+
+    for (const logFile of logFiles.slice(0, 3)) {
+      try {
+        const raw = readFileSync(logFile, "utf8");
+        const lines = raw.split("\n").reverse();
+
+        for (const line of lines) {
+          if (
+            !line.includes("\"updatedAt\"") ||
+            !line.includes("\"totalTokens\"")
+          ) {
+            continue;
+          }
+
+          const summary = parseEmbeddedUsageSummary(line);
+          if (summary) {
+            return summary;
+          }
+        }
+      } catch {
+        continue;
+      }
     }
   }
 
@@ -169,14 +185,21 @@ function readGatewayUsageSummaryFromLogs(): GatewayUsageSummary | null {
 }
 
 function readGatewayUsageSummaryViaCli(): GatewayUsageSummary | null {
-  const result = spawnSync(
-    "openclaw",
-    ["gateway", "usage-cost", "--json", "--days", "30", "--timeout", "2000"],
-    {
-      encoding: "utf8",
-      timeout: 2_500,
-    },
-  );
+  const configuredCommand = config.CLAWVIEW_GATEWAY_USAGE_COMMAND.trim();
+  const result = configuredCommand
+    ? spawnSync(configuredCommand, {
+        encoding: "utf8",
+        shell: true,
+        timeout: 2_500,
+      })
+    : spawnSync(
+        config.CLAWVIEW_OPENCLAW_BIN,
+        ["gateway", "usage-cost", "--json", "--days", "30", "--timeout", "2000"],
+        {
+          encoding: "utf8",
+          timeout: 2_500,
+        },
+      );
 
   if (result.status !== 0) {
     return null;
@@ -196,15 +219,16 @@ function trySelfHealGateway(): boolean {
   }
 
   const restartCommand = config.CLAWVIEW_GATEWAY_RESTART_COMMAND.trim();
-  if (!restartCommand) {
-    return false;
-  }
-
-  const result = spawnSync(restartCommand, {
-    encoding: "utf8",
-    shell: true,
-    timeout: 15_000,
-  });
+  const result = restartCommand
+    ? spawnSync(restartCommand, {
+        encoding: "utf8",
+        shell: true,
+        timeout: 15_000,
+      })
+    : spawnSync(config.CLAWVIEW_OPENCLAW_BIN, ["gateway", "restart"], {
+        encoding: "utf8",
+        timeout: 15_000,
+      });
 
   if (result.status === 0) {
     return true;

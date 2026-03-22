@@ -1,7 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
+import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { config } from "../lib/config";
+import { config, resolveOpenClawHome } from "../lib/config";
 import { expandHomePath } from "../lib/path-utils";
 
 export interface ModelPricing {
@@ -89,8 +90,16 @@ function normalizePricing(
     : null;
 }
 
-function getOpenClawConfigPath(): string {
-  return `${expandHomePath(config.CLAWVIEW_OPENCLAW_HOME)}/openclaw.json`;
+function getOpenClawConfigPaths(): string[] {
+  const configuredFile = expandHomePath(config.CLAWVIEW_OPENCLAW_CONFIG_FILE);
+  const openClawHome = resolveOpenClawHome();
+
+  return [
+    isAbsolute(configuredFile)
+      ? configuredFile
+      : resolve(openClawHome, configuredFile),
+    resolve(openClawHome, "openclaw.json"),
+  ];
 }
 
 function convertCurrencyToCny(value: number, currency: string | undefined): number {
@@ -144,43 +153,46 @@ function readPricingRegistry(): Map<string, ModelPricing> {
 }
 
 function readOpenClawModelPricing(): Map<string, ModelPricing> {
-  const configPath = getOpenClawConfigPath();
-  if (!existsSync(configPath)) {
-    return new Map();
-  }
-
-  try {
-    const raw = readFileSync(configPath, "utf8");
-    const parsed = JSON.parse(raw) as OpenClawConfig;
-    const pricingMap = new Map<string, ModelPricing>();
-
-    for (const [provider, providerConfig] of Object.entries(
-      parsed.models?.providers ?? {},
-    )) {
-      for (const model of providerConfig.models ?? []) {
-        if (!model.id) {
-          continue;
-        }
-
-        const normalized = normalizePricing(model.cost ?? {});
-        if (!normalized) {
-          continue;
-        }
-
-        const pricing: ModelPricing = {
-          ...normalized,
-          source: "openclaw_config",
-        };
-
-        pricingMap.set(`${provider}/${model.id}`, pricing);
-        pricingMap.set(model.id, pricing);
-      }
+  for (const configPath of getOpenClawConfigPaths()) {
+    if (!existsSync(configPath)) {
+      continue;
     }
 
-    return pricingMap;
-  } catch {
-    return new Map();
+    try {
+      const raw = readFileSync(configPath, "utf8");
+      const parsed = JSON.parse(raw) as OpenClawConfig;
+      const pricingMap = new Map<string, ModelPricing>();
+
+      for (const [provider, providerConfig] of Object.entries(
+        parsed.models?.providers ?? {},
+      )) {
+        for (const model of providerConfig.models ?? []) {
+          if (!model.id) {
+            continue;
+          }
+
+          const normalized = normalizePricing(model.cost ?? {});
+          if (!normalized) {
+            continue;
+          }
+
+          const pricing: ModelPricing = {
+            ...normalized,
+            source: "openclaw_config",
+          };
+
+          pricingMap.set(`${provider}/${model.id}`, pricing);
+          pricingMap.set(model.id, pricing);
+        }
+      }
+
+      return pricingMap;
+    } catch {
+      continue;
+    }
   }
+
+  return new Map();
 }
 
 function readOverridePricing(): Map<string, ModelPricing> {

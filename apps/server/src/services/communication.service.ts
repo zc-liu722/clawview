@@ -16,7 +16,7 @@ export function sendOutboundMessage({
 }: OutboundMessageOptions): Promise<{ success: boolean; message: string }> {
   return new Promise((resolve) => {
     execFile(
-      "openclaw",
+      config.CLAWVIEW_OPENCLAW_BIN,
       [
         "message",
         "send",
@@ -35,6 +35,7 @@ export function sendOutboundMessage({
             {
               channel,
               target,
+              command: config.CLAWVIEW_OPENCLAW_BIN,
               stdout: stdout.trim() || null,
               stderr: stderr.trim() || null,
             },
