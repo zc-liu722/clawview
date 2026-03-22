@@ -167,6 +167,7 @@ write_env_file() {
       replaced_clawd = 0;
       replaced_source = 0;
       replaced_origin = 0;
+      replaced_web_port = 0;
     }
     /^CLAWVIEW_OPENCLAW_HOME=/ {
       print "CLAWVIEW_OPENCLAW_HOME=" openclaw_home;
@@ -188,22 +189,33 @@ write_env_file() {
       replaced_origin = 1;
       next;
     }
+    /^CLAWVIEW_WEB_PORT=/ {
+      print "CLAWVIEW_WEB_PORT=5173";
+      replaced_web_port = 1;
+      next;
+    }
     { print }
     END {
       if (!replaced_openclaw) print "CLAWVIEW_OPENCLAW_HOME=" openclaw_home;
       if (!replaced_clawd) print "CLAWVIEW_CLAWD_DIR=" clawd_dir;
       if (!replaced_source) print "CLAWVIEW_DATA_SOURCE=openclaw";
       if (!replaced_origin) print "CLAWVIEW_ALLOWED_ORIGIN=http://localhost:5173";
+      if (!replaced_web_port) print "CLAWVIEW_WEB_PORT=5173";
     }
   ' "${ENV_FILE}" >"${tmp_env}"
   mv "${tmp_env}" "${ENV_FILE}"
 }
 
 install_dependencies() {
+  if [ "${CLAWVIEW_FORCE_INSTALL:-0}" != "1" ] && [ -n "$(find "${ROOT_DIR}/node_modules/.pnpm" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then
+    print_step "检测到现有依赖，跳过重复安装"
+    return 0
+  fi
+
   print_step "安装依赖"
   cd "${ROOT_DIR}"
   corepack enable >/dev/null 2>&1 || true
-  COREPACK_HOME="${COREPACK_HOME}" corepack pnpm install
+  CI=1 COREPACK_HOME="${COREPACK_HOME}" corepack pnpm install
 }
 
 kill_existing_processes() {

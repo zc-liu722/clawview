@@ -144,7 +144,14 @@ CLAWVIEW_DATA_SOURCE="${CLAWVIEW_DATA_SOURCE:-openclaw}"
 CLAWVIEW_OPENCLAW_HOME="$(resolve_path "${CLAWVIEW_OPENCLAW_HOME:-${HOME}/.openclaw}")"
 CLAWVIEW_CLAWD_DIR="$(resolve_path "${CLAWVIEW_CLAWD_DIR:-${HOME}/clawd}")"
 CLAWVIEW_PORT="${CLAWVIEW_PORT:-8787}"
-CLAWVIEW_WEB_PORT="${CLAWVIEW_WEB_PORT:-3000}"
+CLAWVIEW_ALLOWED_ORIGIN="${CLAWVIEW_ALLOWED_ORIGIN:-}"
+if [ -n "${CLAWVIEW_WEB_PORT:-}" ]; then
+  CLAWVIEW_WEB_PORT="${CLAWVIEW_WEB_PORT}"
+elif [ "${MODE}" = "local" ] || [ "${CLAWVIEW_ALLOWED_ORIGIN}" = "http://localhost:5173" ]; then
+  CLAWVIEW_WEB_PORT="5173"
+else
+  CLAWVIEW_WEB_PORT="3000"
+fi
 
 check_file_presence() {
   for file_path in \
