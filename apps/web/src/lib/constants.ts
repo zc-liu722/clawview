@@ -1,0 +1,9 @@
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
+export const DASHBOARD_QUERY_KEY = ["dashboard"];
+export const APPROVAL_COUNTDOWN_INTERVAL_MS = 1000;
+export const SEARCH_DEBOUNCE_MS = 300;
+export const TOAST_DURATION_MS = 3000;
+export const STEP_EXPAND_TRANSITION_MS = 200;
+export const BOTTOM_SHEET_ANIMATION_MS = 350;
+export const TAB_BAR_HEIGHT_PX = 56;
+export const SSE_RECONNECT_DELAY_MS = 3000;

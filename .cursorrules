@@ -1,0 +1,66 @@
+# ClawView — Cursor AI Coding Rules
+# This file is automatically loaded by Cursor IDE. All AI assistants MUST follow these rules.
+
+## Project Context
+
+ClawView is a mobile-first PWA transparency layer for OpenClaw AI Agent.
+Tech stack: React 19 + Vite 6 + Tailwind CSS 4 + shadcn/ui + Zustand + TanStack Query (frontend), Hono + Drizzle ORM + SQLite/Turso (backend), pnpm monorepo.
+
+Read `docs/ARCHITECTURE.md` for full technical context before making architectural decisions.
+Read `docs/PROJECT_STRUCTURE.md` for directory layout and dependency rules.
+Read `docs/AI_CODING_RULES.md` for comprehensive coding standards (this file is a summary).
+Read `docs/API_CONTRACT_DRAFT.md` for domain models and API contracts.
+
+## Critical Rules (NEVER violate)
+
+### Architecture Boundaries
+1. `components/ui/` and `components/composed/` MUST be pure presentational — NO API calls, NO global store access, data via props only.
+2. `features/A` MUST NOT import from `features/B` — zero cross-feature coupling.
+3. `routes/` MUST NOT directly access `db/` — always go through `services/`.
+4. `adapters/` MUST NOT contain business logic — they only normalize events into `ClawEvent` format.
+5. `apps/web` and `apps/server` communicate ONLY via HTTP/SSE/WS and shared types from `@clawview/shared`.
+6. Dependencies flow downward only: app → features → hooks → services → lib → @clawview/shared.
+
+### TypeScript
+7. `strict: true` always. NEVER use `any`. Use `unknown` + Zod parsing instead.
+8. All shared types live in `packages/shared/src/types/`. Do NOT duplicate type definitions.
+9. All runtime validation uses Zod schemas from `packages/shared/src/validators/`.
+
+### Error Handling
+10. Every `await` MUST be wrapped in `try-catch` or have a `.catch()` handler.
+11. Backend errors use custom error classes extending `ClawViewError`. Never `throw new Error()`.
+12. Frontend API failures MUST show user-facing feedback (toast/error state). Never swallow errors silently.
+
+### Security
+13. NEVER put API keys, tokens, or secrets in frontend code (including env vars — Vite bundles them).
+14. NEVER log full tokens or credentials. Use `maskSensitive()` utility.
+15. NEVER store tokens in localStorage. Use httpOnly cookies for refresh tokens, in-memory for access tokens.
+16. All external input validated with Zod before processing.
+
+### State Management
+17. Server state → TanStack Query. Client state → Zustand. NEVER mix.
+18. Real-time SSE/WS data injected via `queryClient.setQueryData()` into TanStack Query cache.
+19. Zustand stores: NO side effects. Side effects belong in hooks or services.
+
+### Anti-Patterns (FORBIDDEN)
+20. NO hardcoded timeouts/intervals — use named constants from `lib/constants.ts`.
+21. NO `index` as React list key — use stable business IDs.
+22. NO raw SQL string concatenation — use Drizzle ORM parameterized queries.
+23. NO `useEffect` without cleanup for subscriptions (WebSocket, SSE, timers).
+24. NO direct DOM manipulation — all UI changes through React state.
+
+### Code Style
+25. File naming: `kebab-case` (e.g., `status-badge.tsx`, `event-collector.service.ts`).
+26. React components: use `function` declarations, not arrow function assignments.
+27. Function params > 3: use options object pattern.
+28. Time-related params MUST have unit suffix: `timeoutMs`, `intervalSec`.
+29. Imports ordered: node builtins → third-party → @clawview/shared → project internal.
+
+### Mobile-First
+30. Design for 375px first, progressively enhance with `sm:` / `md:` / `lg:` breakpoints.
+31. Touch targets minimum 44×44px.
+32. Lists > 50 items MUST use virtual scrolling.
+
+### Git
+33. Conventional Commits: `<type>(<scope>): <description>`. Scopes: `web`, `server`, `shared`.
+34. No commits with `any` type escapes or failing type checks.

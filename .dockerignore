@@ -1,0 +1,6 @@
+.corepack
+dist
+node_modules
+apps/web/dist
+apps/server/dist
+.env

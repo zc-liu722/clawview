@@ -1,0 +1,175 @@
+{
+  "version": "2026-03-22",
+  "models": [
+    {
+      "keys": ["openai/gpt-5", "gpt-5", "gpt-5-chat-latest"],
+      "currency": "USD",
+      "input": 1.25,
+      "cacheRead": 0.125,
+      "output": 10,
+      "sourceUrl": "https://platform.openai.com/docs/pricing/",
+      "lastVerifiedAt": "2026-03-22"
+    },
+    {
+      "keys": ["openai/gpt-5-mini", "gpt-5-mini"],
+      "currency": "USD",
+      "input": 0.25,
+      "cacheRead": 0.025,
+      "output": 2,
+      "sourceUrl": "https://platform.openai.com/docs/pricing/",
+      "lastVerifiedAt": "2026-03-22"
+    },
+    {
+      "keys": ["openai/gpt-5-nano", "gpt-5-nano"],
+      "currency": "USD",
+      "input": 0.05,
+      "cacheRead": 0.005,
+      "output": 0.4,
+      "sourceUrl": "https://platform.openai.com/docs/pricing/",
+      "lastVerifiedAt": "2026-03-22"
+    },
+    {
+      "keys": ["openai/gpt-4.1", "gpt-4.1"],
+      "currency": "USD",
+      "input": 2,
+      "cacheRead": 0.5,
+      "output": 8,
+      "sourceUrl": "https://platform.openai.com/docs/models/gpt-4.1",
+      "lastVerifiedAt": "2026-03-22"
+    },
+    {
+      "keys": ["openai/gpt-4.1-mini", "gpt-4.1-mini"],
+      "currency": "USD",
+      "input": 0.4,
+      "cacheRead": 0.1,
+      "output": 1.6,
+      "sourceUrl": "https://platform.openai.com/docs/models/gpt-4.1-mini",
+      "lastVerifiedAt": "2026-03-22"
+    },
+    {
+      "keys": ["openai/gpt-4o", "gpt-4o"],
+      "currency": "USD",
+      "input": 2.5,
+      "cacheRead": 1.25,
+      "output": 10,
+      "sourceUrl": "https://platform.openai.com/docs/models/gpt-4o",
+      "lastVerifiedAt": "2026-03-22"
+    },
+    {
+      "keys": ["openai/gpt-4o-mini", "gpt-4o-mini"],
+      "currency": "USD",
+      "input": 0.15,
+      "cacheRead": 0.075,
+      "output": 0.6,
+      "sourceUrl": "https://platform.openai.com/docs/models/gpt-4o-mini",
+      "lastVerifiedAt": "2026-03-22"
+    },
+    {
+      "keys": ["openai/o4-mini", "o4-mini"],
+      "currency": "USD",
+      "input": 1.1,
+      "cacheRead": 0.275,
+      "output": 4.4,
+      "sourceUrl": "https://platform.openai.com/docs/models/o4-mini",
+      "lastVerifiedAt": "2026-03-22"
+    },
+    {
+      "keys": ["anthropic/claude-opus-4", "claude-opus-4", "claude-opus-4.1", "claude-opus-4-1"],
+      "currency": "USD",
+      "input": 15,
+      "cacheRead": 1.5,
+      "cacheWrite": 18.75,
+      "output": 75,
+      "sourceUrl": "https://docs.anthropic.com/zh-TW/docs/about-claude/pricing",
+      "lastVerifiedAt": "2026-03-22",
+      "note": "Cache write price uses Anthropic's 5-minute cache tier."
+    },
+    {
+      "keys": ["anthropic/claude-sonnet-4", "claude-sonnet-4", "claude-sonnet-3.7", "claude-3-7-sonnet"],
+      "currency": "USD",
+      "input": 3,
+      "cacheRead": 0.3,
+      "cacheWrite": 3.75,
+      "output": 15,
+      "sourceUrl": "https://docs.anthropic.com/zh-TW/docs/about-claude/pricing",
+      "lastVerifiedAt": "2026-03-22",
+      "note": "Cache write price uses Anthropic's 5-minute cache tier."
+    },
+    {
+      "keys": ["anthropic/claude-haiku-3.5", "claude-haiku-3.5", "claude-3-5-haiku"],
+      "currency": "USD",
+      "input": 0.8,
+      "cacheRead": 0.08,
+      "cacheWrite": 1,
+      "output": 4,
+      "sourceUrl": "https://docs.anthropic.com/zh-TW/docs/about-claude/pricing",
+      "lastVerifiedAt": "2026-03-22",
+      "note": "Cache write price uses Anthropic's 5-minute cache tier."
+    },
+    {
+      "keys": ["google/gemini-2.5-pro", "gemini-2.5-pro"],
+      "currency": "USD",
+      "input": 1.25,
+      "cacheRead": 0.125,
+      "output": 10,
+      "sourceUrl": "https://cloud.google.com/vertex-ai/generative-ai/pricing",
+      "lastVerifiedAt": "2026-03-22"
+    },
+    {
+      "keys": ["google/gemini-2.5-flash", "gemini-2.5-flash"],
+      "currency": "USD",
+      "input": 0.3,
+      "cacheRead": 0.03,
+      "output": 2.5,
+      "sourceUrl": "https://cloud.google.com/vertex-ai/generative-ai/pricing",
+      "lastVerifiedAt": "2026-03-22"
+    },
+    {
+      "keys": ["google/gemini-2.5-flash-lite", "gemini-2.5-flash-lite"],
+      "currency": "USD",
+      "input": 0.1,
+      "cacheRead": 0.01,
+      "output": 0.4,
+      "sourceUrl": "https://cloud.google.com/vertex-ai/generative-ai/pricing",
+      "lastVerifiedAt": "2026-03-22"
+    },
+    {
+      "keys": ["deepseek/deepseek-chat", "deepseek-chat"],
+      "currency": "CNY",
+      "input": 2,
+      "cacheRead": 0.2,
+      "output": 3,
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing",
+      "lastVerifiedAt": "2026-03-22"
+    },
+    {
+      "keys": ["deepseek/deepseek-reasoner", "deepseek-reasoner"],
+      "currency": "CNY",
+      "input": 2,
+      "cacheRead": 0.2,
+      "output": 3,
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing",
+      "lastVerifiedAt": "2026-03-22"
+    },
+    {
+      "keys": ["moonshot/kimi-k2-0711-preview", "moonshot/kimi-k2-0905-preview", "moonshot/kimi-k2", "kimi-k2"],
+      "currency": "CNY",
+      "input": 16,
+      "cacheRead": 4,
+      "output": 64,
+      "sourceUrl": "https://platform.moonshot.cn/blog/posts/k2-turbo-enhance",
+      "lastVerifiedAt": "2026-03-22",
+      "note": "Derived from Moonshot's official statement that turbo pricing was a 50% promotion off the standard K2 rate."
+    },
+    {
+      "keys": ["moonshot/kimi-k2.5", "kimi-k2.5"],
+      "currency": "CNY",
+      "input": 16,
+      "cacheRead": 4,
+      "output": 64,
+      "sourceUrl": "https://platform.moonshot.ai/docs/pricing/chat",
+      "lastVerifiedAt": "2026-03-22",
+      "note": "Temporary fallback mapped to the current K2 generation rate until Moonshot exposes a text-accessible K2.5 pricing table."
+    }
+  ]
+}

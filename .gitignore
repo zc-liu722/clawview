@@ -1,0 +1,9 @@
+.DS_Store
+.env
+.corepack
+*.log
+node_modules
+dist
+apps/web/dist
+apps/server/dist
+tmp

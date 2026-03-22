@@ -1,0 +1,5 @@
+tool_call:web_search: "正在搜索相关网页资料"
+tool_call:file_read: "正在读取任务上下文文件"
+tool_call:crm_lookup: "正在整理 CRM 里的客户线索"
+approval_request: "等待你确认高风险动作"
+error:rate_limit: "模型接口暂时拥堵，系统会自动重试"
