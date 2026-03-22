@@ -4,7 +4,8 @@ set -euo pipefail
 REPO_URL="${CLAWVIEW_REPO_URL:-https://github.com/zc-liu722/clawview.git}"
 BRANCH="${CLAWVIEW_BRANCH:-main}"
 INSTALL_DIR="${CLAWVIEW_INSTALL_DIR:-${HOME}/clawview}"
-OPENCLAW_HOME_INPUT="${1:-${CLAWVIEW_OPENCLAW_HOME:-}}"
+OPENCLAW_HOME_INPUT="${CLAWVIEW_OPENCLAW_HOME:-}"
+NON_INTERACTIVE="${CLAWVIEW_NON_INTERACTIVE:-0}"
 
 lower() {
   printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
@@ -34,6 +35,29 @@ resolve_path() {
 
 print_step() {
   printf '\n==> %s\n' "$1"
+}
+
+parse_args() {
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --non-interactive)
+        NON_INTERACTIVE=1
+        shift
+        ;;
+      -h|--help)
+        echo "Usage: ./scripts/install-from-github.sh [--non-interactive] [OPENCLAW_HOME]"
+        exit 0
+        ;;
+      *)
+        if [ -n "${OPENCLAW_HOME_INPUT}" ] && [ "${OPENCLAW_HOME_INPUT}" != "${CLAWVIEW_OPENCLAW_HOME:-}" ]; then
+          echo "不支持多个 OpenClaw 路径参数。"
+          exit 1
+        fi
+        OPENCLAW_HOME_INPUT="$1"
+        shift
+        ;;
+    esac
+  done
 }
 
 ask_yes_no() {
@@ -105,18 +129,23 @@ prepare_env_defaults() {
 }
 
 main() {
+  parse_args "$@"
   ensure_git
 
   clone_or_update_repo
   prepare_env_defaults
 
   print_step "启动 ClawView 引导脚本"
+  local bootstrap_args=()
+  if [ "${NON_INTERACTIVE}" = "1" ]; then
+    bootstrap_args+=("--non-interactive")
+  fi
   if [ -n "${OPENCLAW_HOME_INPUT}" ]; then
-    "${INSTALL_DIR}/scripts/bootstrap-clawview.sh" "$(resolve_path "${OPENCLAW_HOME_INPUT}")"
+    "${INSTALL_DIR}/scripts/bootstrap-clawview.sh" "${bootstrap_args[@]}" "$(resolve_path "${OPENCLAW_HOME_INPUT}")"
     exit 0
   fi
 
-  "${INSTALL_DIR}/scripts/bootstrap-clawview.sh"
+  "${INSTALL_DIR}/scripts/bootstrap-clawview.sh" "${bootstrap_args[@]}"
 }
 
 main "$@"

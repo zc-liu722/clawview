@@ -27,7 +27,16 @@ export function formatCostFromCentsCompact(
   }
 
   const absoluteValue = Math.abs(costCents);
-  const fractionDigits = absoluteValue >= 10_000 ? 0 : 2;
+  // Keep fractional-cent values visible in compact cards instead of rounding
+  // them down to ¥0.00.
+  const fractionDigits =
+    absoluteValue === 0
+      ? 2
+      : absoluteValue >= 10_000
+        ? 0
+        : absoluteValue >= 1
+          ? 2
+          : 4;
 
   return new Intl.NumberFormat("zh-CN", {
     style: "currency",

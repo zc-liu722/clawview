@@ -47,18 +47,20 @@ export function TabBar({ activeTab, onTabChange, badges }: TabBarProps) {
             <span className="tab-bar-icon" aria-hidden="true">
               {item.icon}
             </span>
-            <span>{item.label}</span>
-            {showBadge ? (
-              <span
-                className={cn(
-                  "tab-bar-badge",
-                  badge?.dot && "is-dot",
-                  badge?.tone ? `tab-bar-badge-${badge.tone}` : undefined,
-                )}
-              >
-                {badge?.dot ? "" : count}
-              </span>
-            ) : null}
+            <span className="tab-bar-label">{item.label}</span>
+            <span className="tab-bar-badge-slot" aria-hidden={!showBadge}>
+              {showBadge ? (
+                <span
+                  className={cn(
+                    "tab-bar-badge",
+                    badge?.dot && "is-dot",
+                    badge?.tone ? `tab-bar-badge-${badge.tone}` : undefined,
+                  )}
+                >
+                  {badge?.dot ? "" : count}
+                </span>
+              ) : null}
+            </span>
           </button>
         );
       })}

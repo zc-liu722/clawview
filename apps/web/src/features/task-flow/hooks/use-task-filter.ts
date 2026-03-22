@@ -7,11 +7,12 @@ export function useTaskFilter(tasks: TaskExecutionLog[]) {
   const [activeFilter, setFilter] = useState<TaskFilter>("all");
 
   const filteredTasks = useMemo(() => {
-    if (activeFilter === "all") {
-      return tasks;
-    }
+    const nextTasks =
+      activeFilter === "all"
+        ? tasks
+        : tasks.filter((task) => task.status === activeFilter);
 
-    return tasks.filter((task) => task.status === activeFilter);
+    return [...nextTasks].sort((left, right) => right.startedAt - left.startedAt);
   }, [activeFilter, tasks]);
 
   return { filteredTasks, activeFilter, setFilter };

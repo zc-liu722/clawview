@@ -22,6 +22,12 @@ If they already know their OpenClaw path:
 curl -fsSL https://raw.githubusercontent.com/zc-liu722/clawview/main/scripts/install-from-github.sh | CLAWVIEW_REPO_URL=https://github.com/zc-liu722/clawview.git bash -s -- ~/.openclaw
 ```
 
+For non-interactive shells:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/zc-liu722/clawview/main/scripts/install-from-github.sh | CLAWVIEW_NON_INTERACTIVE=1 CLAWVIEW_REPO_URL=https://github.com/zc-liu722/clawview.git bash
+```
+
 What it does:
 
 - clones or updates the repo into `~/clawview`
@@ -53,12 +59,31 @@ Edit `.env` and set absolute paths:
 CLAWVIEW_OPENCLAW_HOME=/absolute/path/to/your/.openclaw
 CLAWVIEW_CLAWD_DIR=/absolute/path/to/your/clawd
 CLAWVIEW_WEB_PORT=3000
+CLAWVIEW_LOCAL_PORT=5173
 ```
+
+Port meanings:
+
+- `CLAWVIEW_WEB_PORT`: Docker mode browser port
+- `CLAWVIEW_LOCAL_PORT`: local bundled mode browser port
+- `CLAWVIEW_PORT`: internal API/server port
 
 If your OpenClaw CLI is not on `PATH`, also set:
 
 ```env
 CLAWVIEW_OPENCLAW_BIN=/absolute/path/to/openclaw
+```
+
+If you deploy with Docker and do not need CLI-triggered gateway/message actions inside the container, leave:
+
+```env
+CLAWVIEW_ENABLE_OPENCLAW_CLI=false
+```
+
+If you run local mode and want gateway restart, usage-cost, and outbound message features, set:
+
+```env
+CLAWVIEW_ENABLE_OPENCLAW_CLI=true
 ```
 
 If your gateway commands are custom, also set:
@@ -124,9 +149,15 @@ Use this when Docker is unavailable.
 ./scripts/launch-local-clawview.sh
 ```
 
+Non-interactive local start:
+
+```bash
+CLAWVIEW_NON_INTERACTIVE=1 ./scripts/launch-local-clawview.sh --non-interactive ~/.openclaw
+```
+
 Open:
 
-- `http://localhost:5173`
+- `http://localhost:${CLAWVIEW_LOCAL_PORT:-5173}`
 
 The local launcher will try to install Node.js with the package manager available on the machine.
 

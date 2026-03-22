@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { isAbsolute, resolve } from "node:path";
+import { dirname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { config, resolveOpenClawHome } from "../lib/config";
@@ -55,9 +55,16 @@ interface PricingRegistryFile {
   models?: RegistryEntry[];
 }
 
-const PRICING_REGISTRY_PATH = fileURLToPath(
-  new URL("../../pricing-registry.json", import.meta.url),
-);
+function getPricingRegistryPaths(): string[] {
+  const serviceDir = dirname(fileURLToPath(import.meta.url));
+
+  return [
+    resolve(serviceDir, "../../pricing-registry.json"),
+    resolve(serviceDir, "../../../../pricing-registry.json"),
+    resolve(process.cwd(), "apps/server/pricing-registry.json"),
+    resolve(process.cwd(), "pricing-registry.json"),
+  ];
+}
 
 let cachedPricing:
   | {
@@ -111,45 +118,55 @@ function convertCurrencyToCny(value: number, currency: string | undefined): numb
 }
 
 function readPricingRegistry(): Map<string, ModelPricing> {
-  if (!existsSync(PRICING_REGISTRY_PATH)) {
-    return new Map();
-  }
-
-  try {
-    const raw = readFileSync(PRICING_REGISTRY_PATH, "utf8");
-    const parsed = JSON.parse(raw) as PricingRegistryFile;
-    const pricingMap = new Map<string, ModelPricing>();
-
-    for (const entry of parsed.models ?? []) {
-      const keys = entry.keys?.filter(Boolean) ?? [];
-      if (keys.length === 0) {
-        continue;
-      }
-
-      const normalized = normalizePricing({
-        input: convertCurrencyToCny(entry.input ?? 0, entry.currency),
-        output: convertCurrencyToCny(entry.output ?? 0, entry.currency),
-        cacheRead: convertCurrencyToCny(entry.cacheRead ?? 0, entry.currency),
-        cacheWrite: convertCurrencyToCny(entry.cacheWrite ?? 0, entry.currency),
-      });
-      if (!normalized) {
-        continue;
-      }
-
-      for (const key of keys) {
-        pricingMap.set(key, {
-          ...normalized,
-          source: "builtin_registry",
-          sourceUrl: entry.sourceUrl,
-          note: entry.note,
-        });
-      }
+  for (const registryPath of getPricingRegistryPaths()) {
+    if (!existsSync(registryPath)) {
+      continue;
     }
 
-    return pricingMap;
-  } catch {
-    return new Map();
+    try {
+      const raw = readFileSync(registryPath, "utf8");
+      const parsed = JSON.parse(raw) as PricingRegistryFile;
+      const pricingMap = new Map<string, ModelPricing>();
+
+      for (const entry of parsed.models ?? []) {
+        const keys = entry.keys?.filter(Boolean) ?? [];
+        if (keys.length === 0) {
+          continue;
+        }
+
+        const normalized = normalizePricing({
+          input: convertCurrencyToCny(entry.input ?? 0, entry.currency),
+          output: convertCurrencyToCny(entry.output ?? 0, entry.currency),
+          cacheRead: convertCurrencyToCny(
+            entry.cacheRead ?? 0,
+            entry.currency,
+          ),
+          cacheWrite: convertCurrencyToCny(
+            entry.cacheWrite ?? 0,
+            entry.currency,
+          ),
+        });
+        if (!normalized) {
+          continue;
+        }
+
+        for (const key of keys) {
+          pricingMap.set(key, {
+            ...normalized,
+            source: "builtin_registry",
+            sourceUrl: entry.sourceUrl,
+            note: entry.note,
+          });
+        }
+      }
+
+      return pricingMap;
+    } catch {
+      continue;
+    }
   }
+
+  return new Map();
 }
 
 function readOpenClawModelPricing(): Map<string, ModelPricing> {

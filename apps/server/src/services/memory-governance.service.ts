@@ -53,6 +53,14 @@ function deriveSummaryFromContent(content: string): string {
 }
 
 async function triggerGatewayRestart(): Promise<MemoryRestartStatus> {
+  if (!config.CLAWVIEW_ENABLE_OPENCLAW_CLI) {
+    return {
+      success: false,
+      message: "记忆已保存，但当前部署未启用 OpenClaw CLI，未自动重启网关。",
+      command: "disabled",
+    };
+  }
+
   const restartCommand = config.CLAWVIEW_GATEWAY_RESTART_COMMAND.trim();
 
   try {

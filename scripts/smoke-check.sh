@@ -143,12 +143,13 @@ fi
 CLAWVIEW_DATA_SOURCE="${CLAWVIEW_DATA_SOURCE:-openclaw}"
 CLAWVIEW_OPENCLAW_HOME="$(resolve_path "${CLAWVIEW_OPENCLAW_HOME:-${HOME}/.openclaw}")"
 CLAWVIEW_CLAWD_DIR="$(resolve_path "${CLAWVIEW_CLAWD_DIR:-${HOME}/clawd}")"
+CLAWVIEW_LOCAL_PORT="${CLAWVIEW_LOCAL_PORT:-5173}"
 CLAWVIEW_PORT="${CLAWVIEW_PORT:-8787}"
 CLAWVIEW_ALLOWED_ORIGIN="${CLAWVIEW_ALLOWED_ORIGIN:-}"
 if [ -n "${CLAWVIEW_WEB_PORT:-}" ]; then
   CLAWVIEW_WEB_PORT="${CLAWVIEW_WEB_PORT}"
 elif [ "${MODE}" = "local" ] || [ "${CLAWVIEW_ALLOWED_ORIGIN}" = "http://localhost:5173" ]; then
-  CLAWVIEW_WEB_PORT="5173"
+  CLAWVIEW_WEB_PORT="${CLAWVIEW_LOCAL_PORT}"
 else
   CLAWVIEW_WEB_PORT="3000"
 fi
@@ -273,10 +274,13 @@ check_running_services() {
     return
   fi
 
-  if curl -sf "http://localhost:${CLAWVIEW_PORT}/api/v1/health" >/dev/null 2>&1; then
-    pass "Server health endpoint responded on localhost:${CLAWVIEW_PORT}"
+  local server_port="${CLAWVIEW_PORT}"
+  if curl -sf "http://localhost:${server_port}/api/v1/health" >/dev/null 2>&1; then
+    pass "Server health endpoint responded on localhost:${server_port}"
+  elif curl -sf "http://localhost:${CLAWVIEW_WEB_PORT}/api/v1/health" >/dev/null 2>&1; then
+    pass "Server health endpoint responded on localhost:${CLAWVIEW_WEB_PORT}"
   else
-    warn "Server health endpoint is not reachable on localhost:${CLAWVIEW_PORT}"
+    warn "Server health endpoint is not reachable on localhost:${server_port} or localhost:${CLAWVIEW_WEB_PORT}"
   fi
 
   if curl -sf "http://localhost:${CLAWVIEW_WEB_PORT}" >/dev/null 2>&1; then

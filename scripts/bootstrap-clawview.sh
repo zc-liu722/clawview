@@ -6,6 +6,8 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 ENV_FILE="${ROOT_DIR}/.env"
 EXAMPLE_FILE="${ROOT_DIR}/.env.example"
 DEFAULT_OPENCLAW_HOME="${HOME}/.openclaw"
+NON_INTERACTIVE="${CLAWVIEW_NON_INTERACTIVE:-0}"
+OPENCLAW_HOME_INPUT="${CLAWVIEW_OPENCLAW_HOME:-}"
 
 lower() {
   printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
@@ -41,8 +43,37 @@ resolve_path() {
   esac
 }
 
+parse_args() {
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --non-interactive)
+        NON_INTERACTIVE=1
+        shift
+        ;;
+      -h|--help)
+        echo "Usage: ./scripts/bootstrap-clawview.sh [--non-interactive] [OPENCLAW_HOME]"
+        exit 0
+        ;;
+      *)
+        if [ -n "${OPENCLAW_HOME_INPUT}" ] && [ "${OPENCLAW_HOME_INPUT}" != "${CLAWVIEW_OPENCLAW_HOME:-}" ]; then
+          echo "不支持多个 OpenClaw 路径参数。"
+          exit 1
+        fi
+        OPENCLAW_HOME_INPUT="$1"
+        shift
+        ;;
+    esac
+  done
+}
+
+parse_args "$@"
+
 show_dialog() {
   local message="$1"
+  if [ "${NON_INTERACTIVE}" = "1" ]; then
+    return 0
+  fi
+
   if command -v osascript >/dev/null 2>&1 && [ "$(current_platform)" = "darwin" ]; then
     osascript -e "display dialog \"${message}\" buttons {\"好\"} default button \"好\"" >/dev/null 2>&1 || true
   fi
@@ -50,6 +81,10 @@ show_dialog() {
 
 ask_yes_no() {
   local message="$1"
+  if [ "${NON_INTERACTIVE}" = "1" ]; then
+    return 1
+  fi
+
   if command -v osascript >/dev/null 2>&1 && [ "$(current_platform)" = "darwin" ]; then
     local result
     result="$(osascript -e "button returned of (display dialog \"${message}\" buttons {\"取消\", \"继续\"} default button \"继续\")" 2>/dev/null || true)"
@@ -84,6 +119,11 @@ open_url() {
 pick_openclaw_dir() {
   local current_path="$1"
   if [ -d "${current_path}" ]; then
+    printf '%s\n' "${current_path}"
+    return
+  fi
+
+  if [ "${NON_INTERACTIVE}" = "1" ]; then
     printf '%s\n' "${current_path}"
     return
   fi
@@ -234,6 +274,11 @@ launch_docker_mode() {
 launch_local_mode() {
   local openclaw_home="$1"
   print_step "切换到本机模式启动"
+  if [ "${NON_INTERACTIVE}" = "1" ]; then
+    CLAWVIEW_NON_INTERACTIVE=1 "${SCRIPT_DIR}/launch-local-clawview.sh" --non-interactive "${openclaw_home}"
+    return
+  fi
+
   "${SCRIPT_DIR}/launch-local-clawview.sh" "${openclaw_home}"
 }
 
@@ -241,7 +286,7 @@ main() {
   local openclaw_home
   local compose_cmd
 
-  openclaw_home="$(resolve_path "${1:-${CLAWVIEW_OPENCLAW_HOME:-${DEFAULT_OPENCLAW_HOME}}}")"
+  openclaw_home="$(resolve_path "${OPENCLAW_HOME_INPUT:-${DEFAULT_OPENCLAW_HOME}}")"
   openclaw_home="$(pick_openclaw_dir "${openclaw_home}")"
 
   if [ ! -d "${openclaw_home}" ]; then

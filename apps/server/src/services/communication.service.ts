@@ -14,6 +14,13 @@ export function sendOutboundMessage({
   target,
   message,
 }: OutboundMessageOptions): Promise<{ success: boolean; message: string }> {
+  if (!config.CLAWVIEW_ENABLE_OPENCLAW_CLI) {
+    return Promise.resolve({
+      success: false,
+      message: "当前部署未启用 OpenClaw CLI，无法发送消息。",
+    });
+  }
+
   return new Promise((resolve) => {
     execFile(
       config.CLAWVIEW_OPENCLAW_BIN,

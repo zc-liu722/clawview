@@ -185,6 +185,10 @@ function readGatewayUsageSummaryFromLogs(): GatewayUsageSummary | null {
 }
 
 function readGatewayUsageSummaryViaCli(): GatewayUsageSummary | null {
+  if (!config.CLAWVIEW_ENABLE_OPENCLAW_CLI) {
+    return null;
+  }
+
   const configuredCommand = config.CLAWVIEW_GATEWAY_USAGE_COMMAND.trim();
   const result = configuredCommand
     ? spawnSync(configuredCommand, {
@@ -214,7 +218,7 @@ function readGatewayUsageSummaryViaCli(): GatewayUsageSummary | null {
 }
 
 function trySelfHealGateway(): boolean {
-  if (!config.CLAWVIEW_GATEWAY_SELF_HEAL) {
+  if (!config.CLAWVIEW_GATEWAY_SELF_HEAL || !config.CLAWVIEW_ENABLE_OPENCLAW_CLI) {
     return false;
   }
 

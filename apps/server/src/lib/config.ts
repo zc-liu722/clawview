@@ -29,6 +29,7 @@ const configSchema = z.object({
   CLAWVIEW_AGENT_NAME: z.string().default("我的 OpenClaw"),
   CLAWVIEW_BASE_URL: z.string().default("http://localhost:5173"),
   CLAWVIEW_STATUS_PATH: z.string().default("/"),
+  CLAWVIEW_ENABLE_OPENCLAW_CLI: z.coerce.boolean().default(true),
   CLAWVIEW_GATEWAY_RESTART_COMMAND: z.string().default(""),
   CLAWVIEW_GATEWAY_USAGE_COMMAND: z.string().default(""),
   CLAWVIEW_GATEWAY_SELF_HEAL: z.coerce.boolean().default(true),
